@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="YourProject" default="build" basedir=".">
+    <property name="version" value="1.0.0"/>
+
+    <target name="build"
+        depends="build-common,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+
+    <target name="build-clean"
+        depends="clean,build-common,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+
+	<target name="build-clean-no-unit"
+        depends="clean,build-common-no-unit" />
+		
+	<target name="build-clean-no-unit-lint"
+        depends="clean,build-common-no-unit-lint" />
+	
+	<target name="build-unittest"
+        depends="build-common-unittest,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+	
+	<target name="build-unittest-no-lint"
+        depends="build-common-unittest-no-lint,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+			
+	<target name="build-clean-release"
+        depends="clean,build-common-release,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+		
+	<target name="build-clean-release-no-lint"
+        depends="clean,build-common-release-no-lint,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+		
+	<target name="build-clean-master"
+        depends="clean,build-common-master,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+		
+	<target name="build-clean-master-no-lint"
+        depends="clean,build-common-master-no-lint,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+		
+	<target name="build-clean-hotfix"
+        depends="clean,build-common-hotfix,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+		
+	<target name="build-clean-hotfix-no-lint"
+        depends="clean,build-common-hotfix-no-lint,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+			
+	<target name="build-clean-integrate"
+        depends="clean,build-common-integrate,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+
+    <target name="build-dox"
+        depends="build-common,phpdox,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+
+    <target name="build-dox-clean"
+        depends="clean,build-common,phpdox,phploc,pdepend,phpmd-ci,phpcs-ci,phpcpd,phpcb" />
+
+    <target name="build-parallel"
+        depends="build-common,tools-parallel" />
+
+    <target name="build-parallel-clean"
+        depends="clean,build-common,tools-parallel" />
+
+    <target name="build-common" depends="lint,prepare,storage-permissions,phpunit,stampversion,buildinfo" />
+	
+	<target name="build-common-no-unit" depends="lint,prepare,storage-permissions,stampversion,buildinfo" />
+	
+	<target name="build-common-no-unit-lint" depends="prepare,storage-permissions,stampversion,buildinfo" />
+		
+	<target name="build-common-unittest" depends="lint,phpunit" />
+	
+	<target name="build-common-unittest-no-lint" depends="phpunit" />
+	
+	<target name="build-common-release" depends="lint,prepare,storage-permissions,phpunit,stampversion_release,buildinfo" />
+	
+	<target name="build-common-release-no-lint" depends="prepare,storage-permissions,phpunit,stampversion_release,buildinfo" />
+	
+	<target name="build-common-master" depends="lint,prepare,storage-permissions,phpunit,stampversion_master,buildinfo" />
+	
+	<target name="build-common-master-no-lint" depends="prepare,storage-permissions,phpunit,stampversion_master,buildinfo" />
+	
+	<target name="build-common-hotfix" depends="lint,prepare,storage-permissions,phpunit,stampversion_hotfix,buildinfo" />
+	
+	<target name="build-common-hotfix-no-lint" depends="prepare,storage-permissions,phpunit,stampversion_hotfix,buildinfo" />
+	
+    <target name="build-common-integrate" depends="lint,prepare,storage-permissions,phpunit-integrate" />
+
+    <target name="tools-parallel" description="Run tools in parallel">
+        <parallel threadCount="2">
+            <sequential>
+                <antcall target="pdepend" />
+                <antcall target="phpcs-ci" />
+                <antcall target="phpmd-ci" />
+            </sequential>
+            <antcall target="phpcb" />
+            <antcall target="phpcpd" />
+            <antcall target="phpdox" />
+            <antcall target="phploc" />
+        </parallel>
+    </target>
+
+    <target name="clean" depends="clean-build" description="Cleanup build and composer artifacts" />
+
+    <target name="clean-build" description="Cleanup build artifacts">
+        <echo>Cleaning out the build artifacts</echo>
+        <delete dir="${basedir}/build/api" />
+        <delete dir="${basedir}/build/code-browser" />
+        <delete dir="${basedir}/build/coverage" />
+        <delete dir="${basedir}/build/logs" />
+        <delete dir="${basedir}/build/pdepend" />
+		<delete dir="${basedir}/target" />
+    </target>
+
+    <target name="clean-composer" description="Cleanup composer artifacts">
+        <echo>Cleaning out the composer artifacts</echo>
+        <delete dir="${basedir}/vendor" />
+        <delete file="${basedir}/composer.lock" />
+    </target>
+
+    <target name="composer" depends="composer-install,composer-update" description="Install or update dependencies" />
+
+    <!--// Check to see it the vendor folder already exist, if so, then no reason to run //-->
+    <target name="composer.check">
+        <condition property="composer.exist">
+            <available file="${basedir}/vendor" type="dir" />
+        </condition>
+    </target>
+
+    <target name="composer-install" depends="composer.check" unless="composer.exist" description="Installing dependencies">
+        <echo>Installing dependencies</echo>
+        <exec executable="composer" failonerror="true">
+            <arg value="install" />
+        </exec>
+    </target>
+
+    <target name="composer-update" depends="composer.check" if="composer.exist" description="Updating dependencies">
+        <echo>Updating dependencies</echo>
+        <exec executable="composer" failonerror="true">
+            <arg value="update" />
+        </exec>
+    </target>
+
+    <target name="lint" description="Perform syntax check of sourcecode files">
+        <apply executable="php" failonerror="false">
+            <arg value="-l" />
+            <fileset dir="${basedir}/app">
+                <include name="**/*.php" />
+                <modified />
+            </fileset>
+        </apply>
+    </target>
+
+    <target name="pdepend" description="Calculate software metrics using PHP_Depend">
+        <exec executable="pdepend">
+            <arg value="--jdepend-xml=${basedir}/build/logs/jdepend.xml" />
+            <arg value="--jdepend-chart=${basedir}/build/pdepend/dependencies.svg" />
+            <arg value="--overview-pyramid=${basedir}/build/pdepend/overview-pyramid.svg" />
+            <arg path="${basedir}/app" />
+        </exec>
+    </target>
+
+    <target name="phpcb" description="Aggregate tool output with PHP_CodeBrowser">
+        <exec executable="phpcb">
+            <arg value="--log" />
+            <arg path="${basedir}/build/logs" />
+            <arg value="--source" />
+            <arg path="${basedir}/app" />
+            <arg value="--output" />
+            <arg path="${basedir}/build/code-browser" />
+        </exec>
+    </target>
+
+     <target name="phpcpd" description="Find duplicate code using PHPCPD">
+        <exec executable="phpcpd">
+            <arg value="--log-pmd" />
+            <arg value="${basedir}/build/logs/pmd-cpd.xml" />
+            <arg path="${basedir}/app" />
+        </exec>
+    </target>
+
+    <target name="phpcs"
+         description="Find coding standard violations using PHP_CodeSniffer and print human readable output. Intended for usage on the command line before committing.">
+        <exec executable="phpcs">
+            <arg value="--standard=${basedir}/build/phpcs.xml" />
+            <arg path="${basedir}/app" />
+        </exec>
+    </target>
+
+    <target name="phpcs-ci" description="Find coding standard violations using PHP_CodeSniffer creating a log file for the continuous integration server">
+        <exec executable="phpcs" output="/dev/null">
+            <arg value="--report=checkstyle" />
+            <arg value="--report-file=${basedir}/build/logs/checkstyle.xml" />
+            <arg value="--standard=${basedir}/build/phpcs.xml" />
+            <arg path="${basedir}/app" />
+        </exec>
+    </target>
+
+    <target name="phpdox" description="Generate API documentation using phpDox">
+        <exec executable="phpdox">
+            <arg value="-f" />
+            <arg value="${basedir}/build/phpdox.xml" />
+        </exec>
+    </target>
+
+    <target name="phploc" description="Measure project size using PHPLOC">
+        <exec executable="phploc">
+           <arg value="--log-csv" />
+           <arg value="${basedir}/build/logs/phploc.csv" />
+           <arg path="${basedir}/app" />
+        </exec>
+    </target>
+
+     <target name="phpmd" description="Perform project mess detection using PHPMD and print human readable output. Intended for usage on the command line before committing.">
+        <exec executable="phpmd">
+            <arg path="${basedir}/app" />
+            <arg value="text" />
+            <arg value="${basedir}/build/phpmd.xml" />
+        </exec>
+    </target>
+
+    <target name="phpmd-ci" description="Perform project mess detection using PHPMD creating a log file for the continuous integration server">
+        <exec executable="phpmd">
+            <arg path="${basedir}/app" />
+            <arg value="xml" />
+            <arg value="${basedir}/build/phpmd.xml" />
+            <arg value="--reportfile" />
+            <arg value="${basedir}/build/logs/pmd.xml" />
+        </exec>
+    </target>
+
+    <target name="phpunit" description="Run unit tests with PHPUnit">
+        <exec executable="phpunit" failonerror="true">
+            <arg value="-c" />
+            <arg value="${basedir}/phpunit.xml" />
+            <arg value="--coverage-html" />
+            <arg value="${basedir}/build/coverage" />
+            <arg value="--testsuite" />
+            <arg value="Unit" />
+        </exec>
+    </target>
+
+    <target name="phpunit-integrate" description="Run unit tests with PHPUnit">
+        <exec executable="phpunit" failonerror="true">
+            <arg value="-c" />
+            <arg value="${basedir}/phpunit.xml.dist" />
+            <arg value="--coverage-html" />
+            <arg value="${basedir}/build/coverage" />
+        </exec>
+    </target>
+
+    <target name="storage-permissions" depends="storage-permissions.unix,storage-permissions.windows" description="Setting storage permissions" />
+
+    <target name="storage-permissions.unix" depends="storage.unix.check" if="storage.unix.exist" description="Setting storage permissions on unix">
+        <echo>Setting app/storage to 777</echo>
+        <chmod file="${basedir}/app/storage/**" perm="777" type="dir" failonerror="false" />
+    </target>
+
+    <target name="storage-permissions.windows" depends="storage.windows.check" if="storage.windows.exist" description="Setting storage permissions on windows">
+        <echo>Setting app/storage to writable</echo>
+        <attrib file="${basedir}/app/storage/**" perm="+R" failonerror="false" />
+    </target>
+
+    <!--// Check to see it the app/storage folder exist, if so, then can change permissions //-->
+    <target name="storage.unix.check" description="Check for app/storage on unix">
+        <condition property="storage.unix.exist">
+            <and>
+                <available file="${basedir}/app/storage" type="dir" />
+                <os family="unix" />
+            </and>
+        </condition>
+    </target>
+
+    <!--// Check to see it the app/storage folder exist, if so, then can change permissions //-->
+    <target name="storage.windows.check" description="Check for app/storage on windows">
+        <condition property="storage.windows.exist">
+            <and>
+                <available file="${basedir}/app/storage" type="dir" />
+                <os family="windows" />
+            </and>
+        </condition>
+    </target>
+
+     <target name="prepare" depends="clean-build" description="Prepare for build">
+        <echo>Making the build artifact folders</echo>
+        <mkdir dir="${basedir}/build/api" />
+        <mkdir dir="${basedir}/build/code-browser" />
+        <mkdir dir="${basedir}/build/coverage" />
+        <mkdir dir="${basedir}/build/logs" />
+        <mkdir dir="${basedir}/build/pdepend" />
+		<mkdir dir="${basedir}/target" />
+    </target>
+
+    <target name="clean-zip" description="Prepare for zip">
+        <echo>Cleaning out the zip file</echo>
+        <delete includeemptydirs="true">
+            <fileset dir="${basedir}/target" includes="*.zip"/>
+        </delete>
+    </target>
+
+    <target name="zip" depends="clean-zip" description="Zip ${job_name} to target folder">
+        <zip destfile="${basedir}/target/${job_name}-${version}-${build_number}.zip">
+            <zipfileset dir="${basedir}/app" prefix="app" />
+            <zipfileset dir="${basedir}/vendor" prefix="vendor" />
+            <zipfileset dir="${basedir}/bootstrap" prefix="bootstrap" />
+            <zipfileset dir="${basedir}/public" prefix="public" />
+            <zipfileset dir="${basedir}"  includes="phpunit.*" />
+        </zip>
+        <checksum file="${basedir}/target/${job_name}-${version}-${build_number}.zip" forceOverwrite="yes"/>
+    </target>
+
+    <target name="buildinfo">
+		<propertyfile file="${basedir}/target/BuildInfo.txt"
+                      comment="This file is automatically generated - DO NOT EDIT">
+                        <entry key="ProjectName" value="${app_projectname}"/>
+                        <entry key="BuildVersion" value="${version}-${build_number}"/>
+						<entry key="GitURL" value="${git_url}"/>
+                        <entry key="HashCode" value="${hash_commit}"/>
+						<entry key="AppWebPath" value="${app_web_path}"/>
+						<entry key="AppUser" value="${app_user}"/>
+						<entry key="AppGitBranch" value="${app_git_branch}"/>
+        </propertyfile>
+    </target>
+	<target name="versioninfo">
+       <propertyfile file="${basedir}/dev.txt"
+                      comment="A version in this file is automatically generated from Dev Branch - DO NOT EDIT">
+						<entry key="ProjectName" value="${app_projectname}"/>
+						<entry key="DevVersion" value="${version}-${build_number}"/>
+       </propertyfile>
+    </target>
+	<target name="versioninfo_release">
+       <propertyfile file="${basedir}/release.txt"
+                      comment="A version in this file is automatically generated from Release Branch">
+						<entry key="ProjectName" value="${app_projectname}"/>
+						<entry key="RelVersion" value="${version}-${build_number}"/>
+       </propertyfile>
+    </target>
+	<target name="versioninfo_master">
+       <propertyfile file="${basedir}/version.txt"
+                      comment="A version in this file is automatically generated from Master Branch - DO NOT EDIT">
+						<entry key="ProjectName" value="${app_projectname}"/>
+                        <entry key="BussinessVersion" value="${version}-${build_number}"/>
+       </propertyfile>
+    </target>
+	<target name="versioninfo_hotfix">
+       <propertyfile file="${basedir}/hotfix.txt"
+                      comment="A version in this file is automatically generated from HotFix Branch - DO NOT EDIT">
+						<entry key="ProjectName" value="${app_projectname}"/>
+                        <entry key="HotFixVersion" value="${version}-${build_number}"/>
+       </propertyfile>
+    </target>
+	<target name="stampversion" depends="versioninfo" description="Stamp dev version to GIT server">
+        <exec executable="git" >
+			<arg value="add" />
+			<arg value="dev.txt" />
+		</exec>
+		<exec executable="git" >
+			<arg value="commit" />
+			<arg value="-m" />
+			<arg value="Commit ${version}-${build_number} by Jenkin" />
+		</exec>
+		<exec executable="git" >
+			<arg value="push" />
+			<arg value="origin" />
+			<arg value="develop" />
+		</exec>
+		<exec executable="git" outputproperty="hash_commit" >
+			<arg value="rev-parse" />
+			<arg value="HEAD" />
+		</exec>
+    </target>
+		<target name="stampversion_release" depends="versioninfo_release" description="Stamp release version to GIT server">
+        <exec executable="git" >
+			<arg value="add" />
+			<arg value="release.txt" />
+		</exec>
+		<exec executable="git" >
+			<arg value="commit" />
+			<arg value="-m" />
+			<arg value="Commit Release Version = ${version}-${build_number} from Dev version = ${dev_version} by Jenkin" />
+		</exec>
+		<exec executable="git" >
+			<arg value="push" />
+			<arg value="origin" />
+			<arg value="release" />
+		</exec>
+		<exec executable="git" outputproperty="hash_commit" >
+			<arg value="rev-parse" />
+			<arg value="HEAD" />
+		</exec>
+    </target>	
+	<target name="stampversion_master" depends="versioninfo_master" description="Stamp master version to GIT server">
+        <exec executable="git" >
+			<arg value="add" />
+			<arg value="version.txt" />
+		</exec>
+		<exec executable="git" >
+			<arg value="commit" />
+			<arg value="-m" />
+			<arg value="Commit Master Version = ${version}-${build_number} from Release version = ${rel_version} by Jenkin" />
+		</exec>
+		<exec executable="git" >
+			<arg value="push" />
+			<arg value="origin" />
+			<arg value="master" />
+		</exec>
+		<exec executable="git" outputproperty="hash_commit" >
+			<arg value="rev-parse" />
+			<arg value="HEAD" />
+		</exec>
+    </target>		
+	<target name="stampversion_hotfix" depends="versioninfo_hotfix" description="Stamp master version to GIT server">
+        <exec executable="git" >
+			<arg value="add" />
+			<arg value="hotfix.txt" />
+		</exec>
+		<exec executable="git" >
+			<arg value="commit" />
+			<arg value="-m" />
+			<arg value="Commit HotFix Version = ${version}-${build_number} from Master version = ${bussiness_version} by Jenkin" />
+		</exec>
+		<exec executable="git" >
+			<arg value="push" />
+			<arg value="origin" />
+			<arg value="hotfix" />
+		</exec>
+		<exec executable="git" outputproperty="hash_commit" >
+			<arg value="rev-parse" />
+			<arg value="HEAD" />
+		</exec>
+    </target>		
+</project>
