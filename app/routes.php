@@ -21,6 +21,10 @@ $route_conf = Config::get('route');
 
 $prefix = 'api/';
 
+if (routeLoad($prefix . 'shopsettings', $req_path, $route_conf)) {
+    Route::resource($prefix . 'shopsettings', 'ShopSettingsController');
+}
+
 if (routeLoad($prefix . 'banners', $req_path, $route_conf)) {
     Route::resource($prefix . 'banners', 'BannersController');
 }
